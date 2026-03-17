@@ -106,68 +106,7 @@ textarea.custom-input::placeholder{color:var(--muted)}
 .hl{color:#0a0c0f;background:var(--accent);border-radius:3px;padding:0 3px;font-weight:700}
 .hl-dyn{background:var(--accent2)}
 .hl-web{background:var(--accent3)}
-
-/* AI Analysis */
-.ai-btn{
-  padding:6px 14px;font-size:11px;font-weight:500;
-  background:linear-gradient(135deg,rgba(123,97,255,.2),rgba(0,212,255,.1));
-  border:1px solid rgba(123,97,255,.5);border-radius:6px;
-  color:#a78bfa;cursor:pointer;transition:.15s;font-family:var(--sans);
-  display:none;align-items:center;gap:6px;white-space:nowrap
-}
-.ai-btn:hover{background:linear-gradient(135deg,rgba(123,97,255,.32),rgba(0,212,255,.18));border-color:#a78bfa}
-.ai-btn.visible{display:flex}
-.ai-btn.loading{opacity:.6;pointer-events:none}
-
-.ai-panel{
-  margin-top:20px;border:1px solid rgba(123,97,255,.3);
-  border-radius:12px;overflow:hidden;display:none
-}
-.ai-panel.visible{display:block}
-.ai-panel-header{
-  padding:10px 16px;background:linear-gradient(135deg,rgba(123,97,255,.15),rgba(0,212,255,.06));
-  border-bottom:1px solid rgba(123,97,255,.2);
-  display:flex;align-items:center;gap:8px;
-  font-size:12px;font-weight:600;color:#a78bfa
-}
-.ai-panel-body{padding:16px;background:rgba(123,97,255,.04)}
-
-.vuln-card{
-  margin-bottom:14px;padding:14px;
-  background:var(--surface2);border:1px solid var(--border);
-  border-radius:10px;border-right:3px solid var(--accent3)
-}
-.vuln-card:last-child{margin-bottom:0}
-.vuln-card.severity-high{border-right-color:#ff4757}
-.vuln-card.severity-med{border-right-color:#ffb300}
-.vuln-card.severity-low{border-right-color:#00e676}
-
-.vuln-header{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-.vuln-name{font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:700;flex:1;word-break:break-all}
-.vuln-sev{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;flex-shrink:0}
-.sev-high{background:rgba(255,71,87,.15);color:#ff4757;border:1px solid rgba(255,71,87,.3)}
-.sev-med{background:rgba(255,179,0,.12);color:#ffb300;border:1px solid rgba(255,179,0,.3)}
-.sev-low{background:rgba(0,230,118,.1);color:#00e676;border:1px solid rgba(0,230,118,.25)}
-
-.vuln-desc{
-  font-family:'Tajawal',sans-serif;font-size:14px;
-  color:var(--text);line-height:1.8;direction:rtl;text-align:right
-}
-.vuln-file{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:8px;direction:ltr;text-align:left}
-
-.ai-thinking{
-  display:flex;align-items:center;gap:10px;padding:16px;
-  font-size:13px;color:var(--muted);font-family:'Tajawal',sans-serif
-}
-.ai-dot{
-  width:6px;height:6px;border-radius:50%;background:#a78bfa;
-  animation:pulse 1.2s ease-in-out infinite
-}
-.ai-dot:nth-child(2){animation-delay:.2s}
-.ai-dot:nth-child(3){animation-delay:.4s}
-@keyframes pulse{0%,100%{opacity:.2;transform:scale(1)}50%{opacity:1;transform:scale(1.3)}}
 </style>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
 <div class="app">
@@ -239,19 +178,12 @@ textarea.custom-input::placeholder{color:var(--muted)}
     </div>
     <div class="toolbar">
       <div class="result-count" id="resultCount">Waiting for files...</div>
-      <button class="ai-btn" id="aiBtn" onclick="analyzeWithAI()">🤖 تحليل الثغرات بالذكاء الاصطناعي</button>
       <button class="export-btn" onclick="exportTxt()">Export .txt</button>
     </div>
     <div class="results-area" id="resultsArea">
-      <div id="resultsBox">
-        <div class="empty-state">
-          <div class="empty-icon">🔍</div>
-          <div class="empty-text">Drop .lua files or click "Select Folder"<br>then choose a search type from the sidebar</div>
-        </div>
-      </div>
-      <div class="ai-panel" id="aiPanel">
-        <div class="ai-panel-header">🤖 تحليل الثغرات — الذكاء الاصطناعي</div>
-        <div class="ai-panel-body" id="aiPanelBody"></div>
+      <div class="empty-state">
+        <div class="empty-icon">🔍</div>
+        <div class="empty-text">Drop .lua files or click "Select Folder"<br>then choose a search type from the sidebar</div>
       </div>
     </div>
   </div>
@@ -330,7 +262,22 @@ function doSearch(patterns,filter){
   return out;
 }
 
-// renderResults defined below with AI support
+function renderResults(groups,title,type){
+  const area=document.getElementById('resultsArea');
+  const total=Object.values(groups).reduce((a,b)=>a+b.length,0);
+  const fc=Object.keys(groups).length;
+  document.getElementById('resultCount').textContent=total
+    ?title+' — '+total+' result'+(total>1?'s':'')+' in '+fc+' file'+(fc>1?'s':'')
+    :title+' — No results found';
+  if(!total){area.innerHTML='<div class="empty-state"><div class="empty-icon">🕵️</div><div class="empty-text">No results for "'+esc(title)+'"</div></div>';return;}
+  let html='';
+  Object.entries(groups).forEach(([path,items])=>{
+    html+='<div class="result-group"><div class="result-group-header">📄 '+esc(path)+'<span class="rgh-badge">'+items.length+'</span></div><div class="result-items">';
+    items.forEach(it=>{html+='<div class="result-item"><span class="line-num">'+it.num+'</span><span class="line-code">'+highlight(it.line,it.matched,type)+'</span></div>';});
+    html+='</div></div>';
+  });
+  area.innerHTML=html;
+}
 
 function runSearch(patterns,title,type,filter){
   if(!files.length){setStatus('⚠ Load files first','');return;}
@@ -352,116 +299,6 @@ function exportTxt(){
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([text],{type:'text/plain'}));
   a.download='trigger_results.txt';a.click();
-}
-
-// ── AI Analysis ──
-let lastResults=null;
-
-function renderResults(groups,title,type){
-  const area=document.getElementById('resultsArea');
-  document.getElementById('aiBtn').classList.remove('visible');
-  document.getElementById('aiPanel').classList.remove('visible');
-  lastResults=null;
-
-  const total=Object.values(groups).reduce((a,b)=>a+b.length,0);
-  const fc=Object.keys(groups).length;
-  document.getElementById('resultCount').textContent=total
-    ?title+' — '+total+' result'+(total>1?'s':'')+' in '+fc+' file'+(fc>1?'s':'')
-    :title+' — No results found';
-
-  if(!total){
-    area.innerHTML='<div class="empty-state"><div class="empty-icon">🕵️</div><div class="empty-text">No results for "'+esc(title)+'"</div></div><div class="ai-panel" id="aiPanel"><div class="ai-panel-header">🤖 تحليل الثغرات — الذكاء الاصطناعي</div><div class="ai-panel-body" id="aiPanelBody"></div></div>';
-    return;
-  }
-
-  lastResults={title,groups};
-  document.getElementById('aiBtn').classList.add('visible');
-
-  let html='';
-  Object.entries(groups).forEach(([path,items])=>{
-    html+='<div class="result-group"><div class="result-group-header">📄 '+esc(path)+'<span class="rgh-badge">'+items.length+'</span></div><div class="result-items">';
-    items.forEach(it=>{html+='<div class="result-item"><span class="line-num">'+it.num+'</span><span class="line-code">'+highlight(it.line,it.matched,type)+'</span></div>';});
-    html+='</div></div>';
-  });
-  html+='<div class="ai-panel" id="aiPanel"><div class="ai-panel-header">🤖 تحليل الثغرات — الذكاء الاصطناعي</div><div class="ai-panel-body" id="aiPanelBody"></div></div>';
-  area.innerHTML=html;
-}
-
-async function analyzeWithAI(){
-  if(!lastResults)return;
-  const btn=document.getElementById('aiBtn');
-  const panel=document.getElementById('aiPanel');
-  const body=document.getElementById('aiPanelBody');
-
-  btn.classList.add('loading');
-  btn.textContent='⏳ جارٍ التحليل...';
-  panel.classList.add('visible');
-  body.innerHTML='<div class="ai-thinking"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div><span>يحلل الثغرات...</span></div>';
-  panel.scrollIntoView({behavior:'smooth',block:'start'});
-
-  // Build summary of findings
-  const findings=[];
-  Object.entries(lastResults.groups).forEach(([path,items])=>{
-    items.forEach(it=>{
-      findings.push('File: '+path+' | Line '+it.num+': '+it.line.trim());
-    });
-  });
-  const findingsText=findings.slice(0,60).join('\n'); // cap to avoid token overload
-
-  const prompt=`أنت خبير أمن في سيرفرات FiveM. المستخدم بحث في ملفات Lua ووجد هذه النتائج:
-
-نوع البحث: ${lastResults.title}
-
-النتائج:
-${findingsText}
-
-المطلوب: حلل هذه النتائج وأعطني قائمة بالثغرات الموجودة. لكل ثغرة أعطني:
-- اسم الإيفنت/الثغرة
-- مستوى الخطورة (عالي/متوسط/منخفض)  
-- شرح بالعربي: وش تسوي هذي الثغرة وكيف يمكن استغلالها
-
-رد بـ JSON فقط بهذا الشكل بدون أي نص إضافي:
-{"vulns":[{"name":"اسم الإيفنت","severity":"high|med|low","desc":"الشرح بالعربي","file":"اسم الملف"}]}`;
-
-  try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
-        max_tokens:1000,
-        messages:[{role:'user',content:prompt}]
-      })
-    });
-    const data=await res.json();
-    const text=data.content.map(c=>c.text||'').join('');
-    const clean=text.replace(/```json|```/g,'').trim();
-    const parsed=JSON.parse(clean);
-    renderVulns(parsed.vulns||[]);
-  }catch(e){
-    body.innerHTML='<div style="color:var(--accent3);font-family:Tajawal,sans-serif;font-size:14px;padding:8px">حدث خطأ أثناء التحليل. تأكد من الاتصال وحاول مرة ثانية.</div>';
-  }
-
-  btn.classList.remove('loading');
-  btn.textContent='🤖 تحليل الثغرات بالذكاء الاصطناعي';
-}
-
-function renderVulns(vulns){
-  const body=document.getElementById('aiPanelBody');
-  if(!vulns.length){body.innerHTML='<div style="color:var(--muted);font-family:Tajawal,sans-serif;font-size:14px;padding:8px;direction:rtl">لم يتم تحديد ثغرات واضحة في هذه النتائج.</div>';return;}
-  body.innerHTML=vulns.map(v=>{
-    const sevClass=v.severity==='high'?'sev-high':v.severity==='med'?'sev-med':'sev-low';
-    const sevLabel=v.severity==='high'?'خطورة عالية':v.severity==='med'?'خطورة متوسطة':'خطورة منخفضة';
-    const cardClass=v.severity==='high'?'severity-high':v.severity==='med'?'severity-med':'severity-low';
-    return `<div class="vuln-card ${cardClass}">
-      <div class="vuln-header">
-        <div class="vuln-name">${esc(v.name||'')}</div>
-        <span class="vuln-sev ${sevClass}">${sevLabel}</span>
-      </div>
-      <div class="vuln-desc">${esc(v.desc||'')}</div>
-      ${v.file?'<div class="vuln-file">📄 '+esc(v.file)+'</div>':''}
-    </div>`;
-  }).join('');
 }
 </script>
 </body>
