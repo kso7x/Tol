@@ -908,9 +908,21 @@
         card.className = `item-card ${isWeapon ? 'weapon-card' : ''}`;
         
         const imgSrc = imageMap[it.itemData.image.toLowerCase()] || '';
+        
+        let finalImgHtml = '';
+        if (imgSrc) {
+            finalImgHtml = `<img src="${imgSrc}" class="item-img" loading="lazy">`;
+        } else {
+            let queryName = it.itemData.label.replace(/^unknown$/i, '').trim();
+            const bQuery = encodeURIComponent(queryName + " gta 5 item icon");
+            const autoImgSrc = "https://tse1.mm.bing.net/th?q=" + bQuery + "&w=100&h=100&c=7";
+            const fallbackEmoji = isWeapon ? '🔫' : '📦';
+            finalImgHtml = `<img src="${autoImgSrc}" class="item-img" loading="lazy" style="border-radius:6px; object-fit:contain; width:100%; height:100%; filter: drop-shadow(0 0 2px rgba(255,255,255,0.1));" onerror="this.outerHTML='<span style=\\'font-size:32px; filter: drop-shadow(0 0 8px rgba(255,255,255,0.2));\\'>${fallbackEmoji}</span>'">`;
+        }
+
         card.innerHTML = `
-          <div class="item-img-container" style="${isWeapon ? 'border-color:var(--accent3);' : ''}">
-            ${imgSrc ? `<img src="${imgSrc}" class="item-img" loading="lazy">` : `<span style="font-size:20px">${isWeapon ? '🔫' : '📦'}</span>`}
+          <div class="item-img-container" style="${isWeapon ? 'border-color:var(--accent3);' : ''} padding:${imgSrc ? '0' : '2px'}; background:rgba(0,0,0,0.6);">
+            ${finalImgHtml}
           </div>
           <div class="item-info">
             <div class="item-name">${esc(it.itemData.label)}</div>
@@ -939,16 +951,52 @@
         const card = document.createElement('div');
         card.className = `item-card`;
         
-        const imgSrc = imageMap[it.vehData.image.toLowerCase()] || '';
+        const ccode = (it.vehData.code || '').toLowerCase();
+        const cname = (it.vehData.name || '').toLowerCase();
+        const cmake = (it.vehData.make || '').toLowerCase();
+        const fallbackName = (cmake ? cmake + ' ' + cname : cname).trim().replace(/[\\/:"*?<>|]/g, ''); // filename safe
+        
+        // Search image by code.png, code.jpg, name.png, make name.png, etc.
+        let imgSrc = '';
+        const exts = ['.png', '.jpg', '.jpeg', '.webp'];
+        for (const ext of exts) {
+           if (imageMap[ccode + ext]) { imgSrc = imageMap[ccode + ext]; break; }
+           if (imageMap[cname + ext]) { imgSrc = imageMap[cname + ext]; break; }
+           if (imageMap[fallbackName + ext]) { imgSrc = imageMap[fallbackName + ext]; break; }
+        }
+        
         const nameDisp = it.vehData.make ? `${it.vehData.make} ${it.vehData.name}` : it.vehData.name;
         
+        const isEmergency = ccode.includes('police') || ccode.includes('sheriff') || ccode.includes('fbi') || ccode.includes('fib') || ccode.includes('ems') || ccode.includes('ambo') || ccode.includes('ambulance') || ccode.includes('medic') || ccode.includes('fire') || ccode.includes('lssd') || ccode.includes('bcso') || ccode.includes('sast') || cname.includes('police') || cname.includes('sheriff') || cname.includes('ambulance') || (it.vehData.category||'').toUpperCase() === 'EMERGENCY & POLICE';
+        const fallbackPic = isEmergency 
+        ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512" style="width:36px;height:36px;fill:#00a8ff;filter:drop-shadow(0 0 6px rgba(0,168,255,0.5));opacity:0.9"><path d="M312 32c-13.3 0-24 10.7-24 24s10.7 24 24 24h25.4l11.4 34.2c-23.2 16.5-54.3 26.6-88.8 28.5V112c0-13.3-10.7-24-24-24s-24 10.7-24 24v31.4c-62.5-4.4-118.8-30.8-154-70-9-10-24.8-10.6-34.5-1.4s-10.6 24.8-1.4 34.5C53.7 151 127 185.7 210.9 191.1l-18.4 55.4C168.1 247.9 152 268.4 152 292v4.8l-37 12.3c-18.7 6.2-31 24-31 43.6V416c0 26.5 21.5 48 48 48s48-21.5 48-48h48c26.5 0 48-21.5 48-48h224c0 26.5 21.5 48 48 48s48-21.5 48-48h48c26.5 0 48-21.5 48-48v-63.3c0-19.6-12.3-37.4-31-43.6l-37-12.3V292c0-30.2-20.4-56.1-49.4-62.6L368 111.4V56c0-13.3-10.7-24-24-24h-32zM232 288h176c13.3 0 24 10.7 24 24s-10.7 24-24 24H232c-13.3 0-24-10.7-24-24s10.7-24 24-24z"/></svg>`
+        : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512" style="width:36px;height:36px;fill:#32ff7e;filter:drop-shadow(0 0 6px rgba(50,255,126,0.5));opacity:0.9"><path d="M280.6 153.2c-5.8-19.1-23-32.9-43-33.2L123.6 119C102.7 118.8 84 131 76.5 150.4L20.8 293.4c-12.8 33 2 69.8 32.7 85.3 12.5 6.4 26.6 9.8 41 9.8H112c0 26.5 21.5 48 48 48s48-21.5 48-48h224c0 26.5 21.5 48 48 48s48-21.5 48-48h48c26.5 0 48-21.5 48-48V256c0-17.7-14.3-32-32-32h-67.7l-48.4-56.5c-11.4-13.3-28-21.2-45.7-21.5l-203.6-2.8zM160 352a16 16 0 1 1 0 32 16 16 0 1 1 0-32zm320 0a16 16 0 1 1 0 32 16 16 0 1 1 0-32zm-35.8-128H264c-8.8 0-16-7.2-16-16s7.2-16 16-16h172c7.6 0 14.1 5.3 15.6 12.8l8.4 35.2z"/></svg>`;
+
+        let finalImgHtml = '';
+        if (imgSrc) {
+            finalImgHtml = `<img src="${imgSrc}" class="item-img" loading="lazy">`;
+        } else if (fallbackName.trim().length > 0) {
+            let cleanMake = cmake.replace(/^unknown$/i, '').trim();
+            let cleanName = cname.replace(/^unknown$/i, '').trim();
+            let queryName = (cleanMake ? cleanMake + ' ' + cleanName : cleanName).trim();
+            let catName = (it.vehData.category || '').toLowerCase().replace(/s$/, '');
+            if (catName.includes('emergency') || catName.includes('police')) catName = 'police car';
+            if (!catName || catName === 'uncategorized') catName = 'vehicle';
+            
+            const bQuery = encodeURIComponent(queryName + " " + catName + " gta 5");
+            const autoImgSrc = "https://tse1.mm.bing.net/th?q=" + bQuery + "&w=100&h=100&c=7";
+            finalImgHtml = `<img src="${autoImgSrc}" class="item-img" loading="lazy" style="border-radius:6px; object-fit:cover; width:100%; height:100%;">`;
+        } else {
+            finalImgHtml = fallbackPic;
+        }
+
         card.innerHTML = `
-          <div class="item-img-container" style="border-color:var(--accent);">
-            ${imgSrc ? `<img src="${imgSrc}" class="item-img" loading="lazy">` : `<span style="font-size:20px">🚘</span>`}
+          <div class="item-img-container" style="border-color:${isEmergency ? '#00a8ff' : '#32ff7e'}; padding:${(imgSrc || fallbackName.trim().length > 0) ? '0' : '2px'};">
+            ${finalImgHtml}
           </div>
           <div class="item-info">
             <div class="item-name">${esc(nameDisp)}</div>
-            <div class="item-code" style="background:rgba(0,212,255,0.1);color:var(--accent);">${esc(it.vehData.code)}</div>
+            <div class="item-code" style="background:${isEmergency ? 'rgba(0,168,255,0.1)' : 'rgba(50,255,126,0.1)'};color:${isEmergency ? '#00a8ff' : '#32ff7e'};">${esc(it.vehData.code)}</div>
           </div>
           <div class="item-file">${esc(it.vehData.path.split('/').pop())}</div>`;
         fragment.appendChild(card);
@@ -1162,8 +1210,13 @@
                 if (i+j >= f.lines.length) break;
                 const l = f.lines[i+j];
                 
-                // If we moved past the first line and see another item definition, STOP scanning to prevent bleeding
-                if (j > 1 && l.match(/\[\s*['"][a-zA-Z0-9_\-]+['"]\s*\]\s*=\s*\{/)) break;
+                // Breaking conditions to prevent bleeding into next items:
+                if (j > 0) {
+                   if (l.match(/\[\s*['"][a-zA-Z0-9_\-]+['"]\s*\]\s*=\s*\{/)) break; // Another table key
+                   if (l.match(/(?:^|\s+)(?:local\s+)?[a-zA-Z0-9_\.]+\s*=\s*\{/)) break; // Another config root
+                   if (l.match(/^\s*['"][a-zA-Z0-9_\-]+['"]\s*,?\s*$/)) break; // Another item in string array
+                   if (j > 2 && l.match(/^\s*\}\s*,?\s*$/)) break; // Block end
+                }
 
                 if (!label) {
                    const mLabel = l.match(/label['"]?\s*\]?\s*=\s*['"](.*?)['"]/i);
@@ -1175,9 +1228,10 @@
                 }
                 
                 // STRICT INVENTORY SIGNATURES: (Matches weight = 500, ['weight'] = 500)
-                if (l.match(/(?:weight|limit)['"]?\s*\]?\s*=\s*\d+/i)) hasWeight = true;
-                if (l.match(/type['"]?\s*\]?\s*=\s*['"](?:item|weapon|consumable)['"]/i)) hasTypeItem = true;
+                if (l.match(/(?:weight|limit)['"]?\s*\]?\s*=\s*-?\d*\.?\d+/i)) hasWeight = true;
+                if (l.search(/['"]?type['"]?\s*\]?\s*=\s*['"]?(?:item|weapon|consumable)['"]?/i) !== -1) hasTypeItem = true;
                 if (l.match(/(?:ammotype|decay|degrade|rarity|combinable)['"]?\s*\]?\s*=/i)) hasWeaponProps = true;
+                if (l.match(/(?:description|desc|info)['"]?\s*\]?\s*=/i) && label) hasTypeItem = true;
               }
 
               const isItemsFile = pathLower.includes('items.lua') || pathLower.includes('shared.lua');
@@ -1189,7 +1243,7 @@
               // 3. Contains type = 'item' inside its block.
               // 4. Contains weapon specific properties inside its block.
               // 5. Is inside an `items.lua` file AND has a label.
-              const isValid = m.isStrict || hasWeight || hasTypeItem || hasWeaponProps || (isItemsFile && label);
+              const isValid = m.isStrict || hasWeight || hasTypeItem || hasWeaponProps || (label && image) || (isItemsFile && label);
 
               if (isValid) {
                 const itemData = {
